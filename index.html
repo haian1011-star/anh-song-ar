@@ -57,35 +57,47 @@
   <div id="goi-y">🔍 Hướng camera vào bức ảnh…</div>
   <button id="nut-am-thanh" title="Bật/tắt tiếng">🔊</button>
 
-  <!-- 2. Cảnh AR -->
+  <!-- 2. Cảnh AR
+       Mỗi ảnh in (targetIndex 0, 1, 2 trong targets.mind) đi với 1 video:
+         0: anh-in.jpg   → video.mp4  (Nhóm 2)
+         1: anh-in-2.jpg → video2.mp4
+         2: anh-in-3.jpg → video3.mp4
+       Muốn thêm ảnh: thêm 1 thẻ <video> và 1 khối <a-entity> tương tự. -->
   <a-scene
-    mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001"
-    color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
+    mindar-image="imageTargetSrc: targets.mind; maxTrack: 1; autoStart: false; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001"
+    color-space="sRGB" renderer="colorManagement: true"
     vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
 
     <a-assets timeout="2000">
-      <video id="video" src="video.mp4" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
+      <video id="video-0" src="video.mp4"  preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
+      <video id="video-1" src="video2.mp4" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
+      <video id="video-2" src="video3.mp4" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- targetIndex: 0 = ảnh thứ nhất trong targets.mind -->
-    <a-entity id="anh-dich" mindar-image-target="targetIndex: 0">
-      <!-- Chiều rộng ảnh = 1; chiều cao = 720/1280 = 0.5625 (video ngang 16:9) -->
-      <!-- shader: flat = hiển thị đúng màu video, không bị ánh sáng 3D làm nhạt -->
-      <a-plane material="shader: flat; src: #video" width="1" height="0.5625" position="0 0 0"></a-plane>
+    <!-- Cả 3 video đều quay ngang 16:9 nên khung rộng 1, cao 720/1280 = 0.5625 -->
+    <!-- shader: flat = hiển thị đúng màu video, không bị ánh sáng 3D làm nhạt -->
+    <a-entity class="anh-dich" data-video="video-0" mindar-image-target="targetIndex: 0">
+      <a-plane material="shader: flat; src: #video-0" width="1" height="0.5625"></a-plane>
+    </a-entity>
+    <a-entity class="anh-dich" data-video="video-1" mindar-image-target="targetIndex: 1">
+      <a-plane material="shader: flat; src: #video-1" width="1" height="0.5625"></a-plane>
+    </a-entity>
+    <a-entity class="anh-dich" data-video="video-2" mindar-image-target="targetIndex: 2">
+      <a-plane material="shader: flat; src: #video-2" width="1" height="0.5625"></a-plane>
     </a-entity>
   </a-scene>
 
   <script>
-    const video   = document.getElementById('video');
+    const videos  = [...document.querySelectorAll('a-assets video')];
     const nutBD   = document.getElementById('nut-bat-dau');
     const manDau  = document.getElementById('man-hinh-dau');
     const goiY    = document.getElementById('goi-y');
     const nutAm   = document.getElementById('nut-am-thanh');
     const loi     = document.getElementById('thong-bao-loi');
     const scene   = document.querySelector('a-scene');
-    const dich    = document.getElementById('anh-dich');
+    let tatTieng  = false;
 
     // Khi cảnh 3D tải xong thì cho phép bấm "Bắt đầu"
     function sanSang() { nutBD.disabled = false; nutBD.textContent = 'Bắt đầu'; }
@@ -93,10 +105,12 @@
 
     nutBD.addEventListener('click', async () => {
       nutBD.disabled = true; nutBD.textContent = 'Đang mở camera…';
-      // "Mở khoá" video có tiếng ngay trong lần chạm này (yêu cầu của iPhone/Android)
-      try { video.muted = false; await video.play(); video.pause(); video.currentTime = 0; }
-      catch (e) { video.muted = true; nutAm.textContent = '🔇'; }
-
+      // "Mở khoá" từng video có tiếng ngay trong lần chạm này (yêu cầu của iPhone/Android)
+      for (const v of videos) {
+        try { v.muted = false; await v.play(); v.pause(); v.currentTime = 0; }
+        catch (e) { tatTieng = true; }
+      }
+      if (tatTieng) { videos.forEach(v => v.muted = true); nutAm.textContent = '🔇'; }
       scene.systems['mindar-image-system'].start();
     });
 
@@ -114,14 +128,21 @@
       nutBD.disabled = false; nutBD.textContent = 'Thử lại';
     });
 
-    // Tìm thấy ảnh → phát video; mất ảnh → tạm dừng
-    dich.addEventListener('targetFound', () => { goiY.style.display = 'none'; video.play(); });
-    dich.addEventListener('targetLost',  () => { goiY.style.display = 'block'; video.pause(); });
+    // Tìm thấy ảnh nào → phát đúng video của ảnh đó; mất ảnh → tạm dừng
+    document.querySelectorAll('.anh-dich').forEach(el => {
+      const v = document.getElementById(el.dataset.video);
+      el.addEventListener('targetFound', () => {
+        videos.forEach(x => { if (x !== v) x.pause(); });
+        goiY.style.display = 'none'; v.play();
+      });
+      el.addEventListener('targetLost', () => { goiY.style.display = 'block'; v.pause(); });
+    });
 
     // Bật/tắt tiếng
     nutAm.addEventListener('click', () => {
-      video.muted = !video.muted;
-      nutAm.textContent = video.muted ? '🔇' : '🔊';
+      tatTieng = !tatTieng;
+      videos.forEach(v => v.muted = tatTieng);
+      nutAm.textContent = tatTieng ? '🔇' : '🔊';
     });
   </script>
 </body>

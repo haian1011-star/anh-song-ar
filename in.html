@@ -9,49 +9,68 @@
     @page { size: A4 portrait; margin: 12mm; }
     body { margin: 0; font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #1d1d1d; background: #eee; }
     .trang { width: 186mm; min-height: 270mm; margin: 10mm auto; background: #fff;
-             display: flex; flex-direction: column; align-items: center; }
+             display: flex; flex-direction: column; align-items: center; break-after: page; }
+    .trang:last-child { break-after: auto; }
     h1 { font-size: 22pt; margin: 8mm 0 5mm; }
     /* Ảnh in: 17 x 9,56 cm (đúng tỉ lệ video ngang 16:9). Đổi kích thước thì giữ tỉ lệ 16:9 */
     .anh { width: 170mm; height: 95.6mm; object-fit: cover; border: 0.3mm solid #999; }
     .hang { display: flex; gap: 10mm; align-items: center; margin-top: 8mm; width: 170mm; }
-    #qr svg { width: 50mm; height: 50mm; display: block; }
+    .qr svg { width: 50mm; height: 50mm; display: block; }
     ol { padding-left: 5mm; margin: 0; font-size: 12.5pt; line-height: 1.7; }
     .duong-dan { font-size: 8pt; color: #555; margin-top: 2mm; word-break: break-all; }
-    .nut-in { position: fixed; right: 20px; top: 20px; padding: 10px 22px; font-size: 15px;
-              border: 0; border-radius: 8px; background: #1e6fd9; color: #fff; cursor: pointer; }
-    @media print { body { background: #fff; } .trang { margin: 0; } .nut-in { display: none; } }
+    .thanh-cong-cu { position: fixed; right: 20px; top: 20px; display: flex; gap: 8px; align-items: center;
+                     background: #fff; padding: 8px 12px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.15); font-size: 14px; }
+    .thanh-cong-cu button { padding: 8px 18px; font-size: 15px; border: 0; border-radius: 8px; background: #1e6fd9; color: #fff; cursor: pointer; }
+    @media print { body { background: #fff; } .trang { margin: 0; } .thanh-cong-cu { display: none; } .an { display: none; } }
   </style>
 </head>
 <body>
-  <button class="nut-in" onclick="window.print()">🖨️ In trang này</button>
-  <div class="trang">
-    <h1>Ảnh sống AR</h1>
-    <img class="anh" src="anh-in.jpg" alt="Ảnh để quét AR">
-    <div class="hang">
-      <div>
-        <div id="qr"></div>
-      </div>
-      <div>
-        <ol>
-          <li>Quét mã QR bằng điện thoại.</li>
-          <li>Bấm <b>Bắt đầu</b>, cho phép dùng camera.</li>
-          <li>Hướng camera vào bức ảnh phía trên.</li>
-          <li>Xem ảnh “sống dậy”! 🎬</li>
-        </ol>
-        <div class="duong-dan" id="duong-dan"></div>
-      </div>
-    </div>
+  <div class="thanh-cong-cu">
+    In:
+    <label><input type="checkbox" value="1" checked> Ảnh 1</label>
+    <label><input type="checkbox" value="2" checked> Ảnh 2</label>
+    <label><input type="checkbox" value="3" checked> Ảnh 3</label>
+    <button onclick="window.print()">🖨️ In</button>
   </div>
 
+  <div id="cac-trang"></div>
+
   <script>
+    // Danh sách ảnh in (cùng một mã QR cho cả 3 ảnh)
+    const ANH = [
+      { so: 1, file: 'anh-in.jpg',   ten: 'Nhóm 2 thuyết trình' },
+      { so: 2, file: 'anh-in-2.jpg', ten: 'Chương trình tưới cây tự động' },
+      { so: 3, file: 'anh-in-3.jpg', ten: 'Cả nhóm lập trình' },
+    ];
     // Đường link trang AR trên GitHub Pages (dùng khi mở file này ngay trên máy tính)
     const LINK_MAC_DINH = 'https://haian1011-star.github.io/anh-song-ar/';
-    // Có thể chỉ định link khác: in.html?url=https://...
     const thamSo = new URLSearchParams(location.search).get('url');
     const url = thamSo || (location.protocol === 'file:' ? LINK_MAC_DINH : new URL('./', location.href).href);
     const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
-    document.getElementById('qr').innerHTML = qr.createSvgTag({ margin: 0, scalable: true });
-    document.getElementById('duong-dan').textContent = url;
+    const qrSvg = qr.createSvgTag({ margin: 0, scalable: true });
+
+    document.getElementById('cac-trang').innerHTML = ANH.map(a => `
+      <div class="trang" id="trang-${a.so}">
+        <h1>Ảnh sống AR – ${a.ten}</h1>
+        <img class="anh" src="${a.file}" alt="Ảnh ${a.so} để quét AR">
+        <div class="hang">
+          <div class="qr">${qrSvg}</div>
+          <div>
+            <ol>
+              <li>Quét mã QR bằng điện thoại.</li>
+              <li>Bấm <b>Bắt đầu</b>, cho phép dùng camera.</li>
+              <li>Hướng camera vào bức ảnh phía trên.</li>
+              <li>Xem ảnh “sống dậy”! 🎬</li>
+            </ol>
+            <div class="duong-dan">${url}</div>
+          </div>
+        </div>
+      </div>`).join('');
+
+    // Bỏ chọn ảnh nào thì trang đó không được in
+    document.querySelectorAll('.thanh-cong-cu input').forEach(cb => cb.addEventListener('change', () => {
+      document.getElementById('trang-' + cb.value).classList.toggle('an', !cb.checked);
+    }));
   </script>
 </body>
 </html>
