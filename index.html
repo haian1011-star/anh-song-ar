@@ -9,7 +9,8 @@
   <script src="lib/aframe.min.js"></script>
   <script src="lib/mindar-image-aframe.prod.js"></script>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
+    /* Không tô màu nền cho body: nền sẽ che mất hình camera */
+    html, body { margin: 0; height: 100%; overflow: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 
     /* Màn hình bắt đầu */
@@ -71,7 +72,8 @@
     <!-- targetIndex: 0 = ảnh thứ nhất trong targets.mind -->
     <a-entity id="anh-dich" mindar-image-target="targetIndex: 0">
       <!-- Chiều rộng ảnh = 1; chiều cao = 720/1280 = 0.5625 (video ngang 16:9) -->
-      <a-plane src="#video" width="1" height="0.5625" position="0 0 0"></a-plane>
+      <!-- shader: flat = hiển thị đúng màu video, không bị ánh sáng 3D làm nhạt -->
+      <a-plane material="shader: flat; src: #video" width="1" height="0.5625" position="0 0 0"></a-plane>
     </a-entity>
   </a-scene>
 
