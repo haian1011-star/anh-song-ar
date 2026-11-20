@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Ảnh sống AR</title>
+  <link rel="icon" href="data:,">
+  <!-- Thư viện 3D (A-Frame) và thư viện nhận diện ảnh (MindAR), đã lưu sẵn trong thư mục lib -->
+  <script src="lib/aframe.min.js"></script>
+  <script src="lib/mindar-image-aframe.prod.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+    /* Màn hình bắt đầu */
+    #man-hinh-dau {
+      position: fixed; inset: 0; z-index: 20;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 24px; text-align: center; color: #fff;
+      background: linear-gradient(160deg, #0f2a44, #10394f 55%, #1d4d3c);
+    }
+    #man-hinh-dau h1 { margin: 0; font-size: 28px; }
+    #man-hinh-dau p  { margin: 0; max-width: 340px; line-height: 1.5; opacity: .9; }
+    #nut-bat-dau {
+      margin-top: 8px; padding: 16px 40px; font-size: 20px; font-weight: 600;
+      border: 0; border-radius: 999px; background: #ffd34d; color: #1b1b1b; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    }
+    #nut-bat-dau:disabled { opacity: .6; }
+
+    /* Dòng nhắc khi đang tìm ảnh */
+    #goi-y {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 10;
+      padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff;
+      font-size: 15px; white-space: nowrap; display: none;
+    }
+    /* Nút bật/tắt tiếng */
+    #nut-am-thanh {
+      position: fixed; right: 16px; top: 16px; z-index: 10; display: none;
+      width: 48px; height: 48px; border-radius: 50%; border: 0; font-size: 22px;
+      background: rgba(0,0,0,.55); color: #fff; cursor: pointer;
+    }
+    #thong-bao-loi { color: #ffb4b4; display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Màn hình bắt đầu: cần 1 lần chạm để điện thoại cho phép mở camera và phát tiếng -->
+  <div id="man-hinh-dau">
+    <h1>📷 Ảnh sống AR</h1>
+    <p>Bấm <b>Bắt đầu</b>, cho phép dùng camera, rồi hướng camera vào bức ảnh đã in.</p>
+    <button id="nut-bat-dau" disabled>Đang tải…</button>
+    <p id="thong-bao-loi"></p>
+  </div>
+
+  <div id="goi-y">🔍 Hướng camera vào bức ảnh…</div>
+  <button id="nut-am-thanh" title="Bật/tắt tiếng">🔊</button>
+
+  <!-- 2. Cảnh AR -->
+  <a-scene
+    mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001"
+    color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+
+    <a-assets timeout="2000">
+      <video id="video" src="video.mp4" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- targetIndex: 0 = ảnh thứ nhất trong targets.mind -->
+    <a-entity id="anh-dich" mindar-image-target="targetIndex: 0">
+      <!-- Chiều rộng ảnh = 1; chiều cao = 720/1280 = 0.5625 (video ngang 16:9) -->
+      <a-plane src="#video" width="1" height="0.5625" position="0 0 0"></a-plane>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const video   = document.getElementById('video');
+    const nutBD   = document.getElementById('nut-bat-dau');
+    const manDau  = document.getElementById('man-hinh-dau');
+    const goiY    = document.getElementById('goi-y');
+    const nutAm   = document.getElementById('nut-am-thanh');
+    const loi     = document.getElementById('thong-bao-loi');
+    const scene   = document.querySelector('a-scene');
+    const dich    = document.getElementById('anh-dich');
+
+    // Khi cảnh 3D tải xong thì cho phép bấm "Bắt đầu"
+    function sanSang() { nutBD.disabled = false; nutBD.textContent = 'Bắt đầu'; }
+    if (scene.hasLoaded) sanSang(); else scene.addEventListener('loaded', sanSang);
+
+    nutBD.addEventListener('click', async () => {
+      nutBD.disabled = true; nutBD.textContent = 'Đang mở camera…';
+      // "Mở khoá" video có tiếng ngay trong lần chạm này (yêu cầu của iPhone/Android)
+      try { video.muted = false; await video.play(); video.pause(); video.currentTime = 0; }
+      catch (e) { video.muted = true; nutAm.textContent = '🔇'; }
+
+      scene.systems['mindar-image-system'].start();
+    });
+
+    // Camera đã chạy
+    scene.addEventListener('arReady', () => {
+      manDau.style.display = 'none';
+      goiY.style.display = 'block';
+      nutAm.style.display = 'block';
+    });
+
+    // Không mở được camera
+    scene.addEventListener('arError', () => {
+      loi.style.display = 'block';
+      loi.innerHTML = 'Không mở được camera. Hãy kiểm tra đã cho phép camera, và mở trang bằng Chrome (Android) hoặc Safari (iPhone).';
+      nutBD.disabled = false; nutBD.textContent = 'Thử lại';
+    });
+
+    // Tìm thấy ảnh → phát video; mất ảnh → tạm dừng
+    dich.addEventListener('targetFound', () => { goiY.style.display = 'none'; video.play(); });
+    dich.addEventListener('targetLost',  () => { goiY.style.display = 'block'; video.pause(); });
+
+    // Bật/tắt tiếng
+    nutAm.addEventListener('click', () => {
+      video.muted = !video.muted;
+      nutAm.textContent = video.muted ? '🔇' : '🔊';
+    });
+  </script>
+</body>
+</html>

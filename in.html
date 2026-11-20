@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>In ảnh sống AR</title>
+  <link rel="icon" href="data:,">
+  <script src="lib/qrcode.js"></script>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { margin: 0; font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #1d1d1d; background: #eee; }
+    .trang { width: 186mm; min-height: 270mm; margin: 10mm auto; background: #fff;
+             display: flex; flex-direction: column; align-items: center; }
+    h1 { font-size: 22pt; margin: 8mm 0 5mm; }
+    /* Ảnh in: 17 x 9,56 cm (đúng tỉ lệ video ngang 16:9). Đổi kích thước thì giữ tỉ lệ 16:9 */
+    .anh { width: 170mm; height: 95.6mm; object-fit: cover; border: 0.3mm solid #999; }
+    .hang { display: flex; gap: 10mm; align-items: center; margin-top: 8mm; width: 170mm; }
+    #qr svg { width: 50mm; height: 50mm; display: block; }
+    ol { padding-left: 5mm; margin: 0; font-size: 12.5pt; line-height: 1.7; }
+    .duong-dan { font-size: 8pt; color: #555; margin-top: 2mm; word-break: break-all; }
+    .nut-in { position: fixed; right: 20px; top: 20px; padding: 10px 22px; font-size: 15px;
+              border: 0; border-radius: 8px; background: #1e6fd9; color: #fff; cursor: pointer; }
+    @media print { body { background: #fff; } .trang { margin: 0; } .nut-in { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="nut-in" onclick="window.print()">🖨️ In trang này</button>
+  <div class="trang">
+    <h1>Ảnh sống AR</h1>
+    <img class="anh" src="anh-in.jpg" alt="Ảnh để quét AR">
+    <div class="hang">
+      <div>
+        <div id="qr"></div>
+      </div>
+      <div>
+        <ol>
+          <li>Quét mã QR bằng điện thoại.</li>
+          <li>Bấm <b>Bắt đầu</b>, cho phép dùng camera.</li>
+          <li>Hướng camera vào bức ảnh phía trên.</li>
+          <li>Xem ảnh “sống dậy”! 🎬</li>
+        </ol>
+        <div class="duong-dan" id="duong-dan"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Đường link trang AR trên GitHub Pages (dùng khi mở file này ngay trên máy tính)
+    const LINK_MAC_DINH = 'https://haian1011-star.github.io/anh-song-ar/';
+    // Có thể chỉ định link khác: in.html?url=https://...
+    const thamSo = new URLSearchParams(location.search).get('url');
+    const url = thamSo || (location.protocol === 'file:' ? LINK_MAC_DINH : new URL('./', location.href).href);
+    const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+    document.getElementById('qr').innerHTML = qr.createSvgTag({ margin: 0, scalable: true });
+    document.getElementById('duong-dan').textContent = url;
+  </script>
+</body>
+</html>
